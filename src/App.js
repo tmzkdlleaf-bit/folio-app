@@ -552,39 +552,42 @@ function Editor({ file, updateFile, goBack, theme, currentTheme }) {
     });
   };
 
-  // ── AI 템플릿 생성 (/api/claude 프록시 — CORS 해결) ──
+  // ── AI 템플릿 생성 ──
   const generateAITemplate = async (promptText) => {
     setAiLoading(true);
     try {
-      const system = `당신은 포트폴리오 레이아웃 디자이너입니다.
-주어진 설명에 맞는 레이아웃 요소 배열을 JSON으로만 반환하세요. 설명 없이 JSON 배열만 출력하세요.
+      const systemPrompt = `당신은 포트폴리오 레이아웃 디자이너입니다. 
+주어진 설명에 맞는 포트폴리오 레이아웃 요소 배열을 JSON으로만 반환하세요.
 캔버스 크기는 ${canvasSize.width}x${canvasSize.height}입니다.
-반환 형식: [{ "type":"text"|"shape", "x":숫자, "y":숫자, "width":숫자, "height":숫자, "content":"텍스트", "shape":"rect"|"circle"|"rect_r", "fill":"#색상", "stroke":"#색상", "fontSize":숫자, "fontWeight":"normal"|"bold", "color":"#색상" }]
-요소는 6~12개. 좌표는 캔버스 범위 내로 지정하세요.`;
-      const res = await fetch('/api/claude', {
+반환 형식은 반드시 JSON 배열: [{ type, x, y, width, height, content?, fill?, stroke?, shape?, fontFamily?, fontSize?, fontWeight?, color?, backgroundColor? }]
+type은 'text' 또는 'shape' 중 하나. shape는 rect/circle/rect_r 중 하나.
+요소는 5~12개. 실제 사용 가능한 좌표값을 사용하세요.`;
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 1500,
-          system,
+          max_tokens: 1000,
+          system: systemPrompt,
           messages: [{ role: 'user', content: promptText }],
         }),
       });
-      if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      const raw = data.content?.map(b=>b.text||'').join('') || '';
+      const raw = data.content?.map(b=>b.text||'').join('');
       const jsonMatch = raw.match(/\[[\s\S]*\]/);
       if (!jsonMatch) throw new Error('JSON 파싱 실패');
       const parsed = JSON.parse(jsonMatch[0]);
       const newEls = parsed.map((el, i) => ({
         id: `el_${Date.now()}_${i}`,
-        zIndex: elements.length + i + 1,
+        zIndex: i + 1,
         fontFamily: fontOptions[0].value,
-        fontSize: 16, fontWeight: 'normal', color: '#374151',
+        fontSize: 16,
+        fontWeight: 'normal',
+        color: '#374151',
         backgroundColor: 'transparent',
-        fill: '#e5e7eb', stroke: '#9ca3af', strokeWidth: 2,
+        fill: '#e5e7eb',
+        stroke: '#9ca3af',
+        strokeWidth: 2,
         innerText: '',
         innerTextStyle: { fontFamily: fontOptions[0].value, fontSize: 14, fontWeight: 'normal', color: '#374151' },
         ...el,
@@ -1032,7 +1035,7 @@ function Editor({ file, updateFile, goBack, theme, currentTheme }) {
         {/* ── 뷰포트 ── */}
         <div ref={viewportRef} className="flex-1 overflow-auto bg-gray-900/5 flex justify-center items-center p-10 relative" onClick={()=>setSelectedIds([])}>
 
-          {/* 플로팅 툴바 — fixed로 헤더 아래 고정, 사이드바(w-72=288px) + 헤더(h-14=56px) 반영 */}
+          {/* 플로팅 툴바 — fixed로 헤더 아래 항상 고정 (사이드바 w-72=288px, 헤더 h-14=56px) */}
           {selectedEl && (
             <div
               className="fixed z-50 flex flex-col items-center"
@@ -1043,9 +1046,9 @@ function Editor({ file, updateFile, goBack, theme, currentTheme }) {
           )}
 
           {/* 줌 래퍼 */}
-          <div style={{ transform:`scale(${zoom})`, transformOrigin:'center center', transition:'transform 0.2s ease-in-out', position:'relative' }}>
+          <div style={{ transform:`scale(${zoom})`, transformOrigin:'center center', transition:'transform 0.2s ease-in-out', position: 'relative' }}>
 
-            {/* 거리 가이드 — overflow-hidden 밖, 줌 래퍼 안에서 절대좌표로 렌더 */}
+            {/* 거리 가이드 — overflow-hidden 밖에서 렌더해야 잘리지 않음 */}
             {renderDistanceGuides()}
 
             <div
