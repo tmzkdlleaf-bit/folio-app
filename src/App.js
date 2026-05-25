@@ -555,49 +555,47 @@ function Editor({ file, updateFile, goBack, theme, currentTheme }) {
     });
   };
 
-  // ── AI 템플릿 생성 ──
+  // ── AI 템플릿 생성 (/api/claude 프록시 사용 — CORS 해결) ──
   const generateAITemplate = async (promptText) => {
     setAiLoading(true);
     try {
-      const systemPrompt = `당신은 포트폴리오 레이아웃 디자이너입니다. 
-주어진 설명에 맞는 포트폴리오 레이아웃 요소 배열을 JSON으로만 반환하세요.
+      const system = `당신은 포트폴리오 레이아웃 디자이너입니다.
+주어진 설명에 맞는 레이아웃 요소 배열을 JSON으로만 반환하세요. 설명 없이 JSON 배열만 출력하세요.
 캔버스 크기는 ${canvasSize.width}x${canvasSize.height}입니다.
-반환 형식은 반드시 JSON 배열: [{ type, x, y, width, height, content?, fill?, stroke?, shape?, fontFamily?, fontSize?, fontWeight?, color?, backgroundColor? }]
-type은 'text' 또는 'shape' 중 하나. shape는 rect/circle/rect_r 중 하나.
-요소는 5~12개. 실제 사용 가능한 좌표값을 사용하세요.`;
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+반환 형식: [{ "type":"text"|"shape", "x":숫자, "y":숫자, "width":숫자, "height":숫자, "content":"텍스트", "shape":"rect"|"circle"|"rect_r", "fill":"#색상", "stroke":"#색상", "fontSize":숫자, "fontWeight":"normal"|"bold", "color":"#색상" }]
+요소는 6~12개. 좌표는 캔버스 범위 내로 지정하세요.`;
+
+      const res = await fetch('/api/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: systemPrompt,
+          max_tokens: 1500,
+          system,
           messages: [{ role: 'user', content: promptText }],
         }),
       });
+      if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
       const data = await res.json();
-      const raw = data.content?.map(b=>b.text||'').join('');
-      const jsonMatch = raw.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) throw new Error('JSON 파싱 실패');
-      const parsed = JSON.parse(jsonMatch[0]);
+      if (data.error) throw new Error(data.error);
+      const raw = data.content?.map(b => b.text || '').join('') || '';
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (!match) throw new Error('JSON 형식을 찾을 수 없습니다');
+      const parsed = JSON.parse(match[0]);
       const newEls = parsed.map((el, i) => ({
         id: `el_${Date.now()}_${i}`,
-        zIndex: i + 1,
+        zIndex: elements.length + i + 1,
         fontFamily: fontOptions[0].value,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#374151',
+        fontSize: 16, fontWeight: 'normal', color: '#374151',
         backgroundColor: 'transparent',
-        fill: '#e5e7eb',
-        stroke: '#9ca3af',
-        strokeWidth: 2,
+        fill: '#e5e7eb', stroke: '#9ca3af', strokeWidth: 2,
         innerText: '',
         innerTextStyle: { fontFamily: fontOptions[0].value, fontSize: 14, fontWeight: 'normal', color: '#374151' },
         ...el,
       }));
       updateElements([...elements, ...newEls]);
     } catch (err) {
-      alert('AI 템플릿 생성 오류: ' + err.message);
+      alert('AI 템플릿 생성 오류:\n' + err.message);
     } finally {
       setAiLoading(false);
     }
@@ -632,7 +630,7 @@ type은 'text' 또는 'shape' 중 하나. shape는 rect/circle/rect_r 중 하나
   const selectedEl = elements.find(el => el.id === selectedId);
 
   // ── 플로팅 툴바 탭 렌더 ──
-  const renderToolbarContent = () => {
+  const renderToolbar = () => {
     if (!selectedEl) return null;
 
     // 스타일 탭
@@ -811,9 +809,12 @@ type은 'text' 또는 'shape' 중 하나. shape는 rect/circle/rect_r 중 하나
     }
     if (el.type === 'group') {
       return (
-        <div className="w-full h-full relative drag-handle cursor-move border-2 border-dashed border-blue-400/40 rounded">
+        // drag-handle을 전체 영역에 적용 → Rnd가 그룹의 x/y를 변경
+        // children은 상대좌표(el.x/y 기준)로 저장되어 있으므로 자동으로 따라옴
+        <div className="w-full h-full relative drag-handle cursor-move border-2 border-dashed border-blue-400/50 rounded">
           {el.children?.map(child => (
-            <div key={child.id} className="absolute" style={{ left:child.x, top:child.y, width:child.width, height:child.height }}>
+            <div key={child.id} className="absolute pointer-events-none"
+              style={{ left: child.x, top: child.y, width: child.width, height: child.height }}>
               {renderElement(child)}
             </div>
           ))}
@@ -1038,13 +1039,10 @@ type은 'text' 또는 'shape' 중 하나. shape는 rect/circle/rect_r 중 하나
         {/* ── 뷰포트 ── */}
         <div ref={viewportRef} className="flex-1 overflow-auto bg-gray-900/5 flex justify-center items-center p-10 relative" onClick={()=>setSelectedIds([])}>
 
-          {/* 플로팅 툴바 — z-index를 헤더(z-20)보다 높게 & 뷰포트 내부에 배치 */}
+          {/* 플로팅 툴바 — 뷰포트 내부 상단에 고정, z-30으로 헤더(z-20) 위 */}
           {selectedEl && (
-            <div
-              className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center"
-              style={{ pointerEvents:'auto' }}
-              onClick={e=>e.stopPropagation()}>
-              {renderToolbarContent()}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center" onClick={e=>e.stopPropagation()}>
+              {renderToolbar()}
             </div>
           )}
 
