@@ -3,7 +3,7 @@ import { Rnd } from 'react-rnd';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
-  Sun, Moon, Leaf, Download, Grid, Type, Image as ImageIcon,
+  Sun, Moon, Leaf, Download, Grid, Type,
   Trash2, MoveHorizontal, MoveVertical, Maximize,
   Upload, Folder, FileText, ChevronLeft, LayoutGrid,
   Bold, Italic, Underline, Monitor,
@@ -185,7 +185,7 @@ function Editor({ file, updateFile, goBack, theme, currentTheme }) {
   useEffect(()=>{localStorage.setItem('portfolio_assets',JSON.stringify(globalAssets));},[globalAssets]);
   useEffect(()=>{localStorage.setItem('portfolio_user_templates',JSON.stringify(userTemplates));},[userTemplates]);
   useEffect(()=>{localStorage.setItem('portfolio_watermark',watermark);},[watermark]);
-  useEffect(()=>{updateFile({...file,pages});},[pages]);
+  useEffect(()=>{updateFile({...file,pages});}, [pages]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(()=>{
     if(viewportRef.current){
       const vW=viewportRef.current.clientWidth-100, vH=viewportRef.current.clientHeight-100;
@@ -202,7 +202,7 @@ function Editor({ file, updateFile, goBack, theme, currentTheme }) {
       if(e.ctrlKey&&e.shiftKey&&e.key==='G'){e.preventDefault();ungroupSelected();}
     };
     window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h);
-  },[selectedIds,elements]);
+  },[selectedIds,elements]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateElements=(newEls)=>setPages(prev=>prev.map((p,i)=>i===currentPageIndex?{...p,elements:newEls}:p));
   const updateElement=(id,props)=>updateElements(elements.map(el=>el.id===id?{...el,...props}:el));
