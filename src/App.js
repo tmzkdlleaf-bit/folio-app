@@ -1,15 +1,15 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
-  Sun, Moon, Leaf, Download, Grid, Type, Image as ImageIcon,
+  Sun, Moon, Leaf, Download, Grid, Type,
   Trash2, MoveHorizontal, MoveVertical, Maximize,
-  Upload, Folder, FileText, ChevronLeft, LayoutGrid,
+  Upload, Folder, FileText, ChevronLeft,
   Bold, Italic, Underline, Monitor,
   Plus, Layers, ArrowUpToLine, ArrowDownToLine, FilePlus,
-  Square, Circle, Triangle, Minus, Pen, Star, Hexagon,
-  Group, Ungroup, BookTemplate, Sparkles, Save, X, ChevronDown
+  Square, Minus,
+  Group, Ungroup, Sparkles, Save, X, ChevronDown
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -338,9 +338,6 @@ function Editor({ file, updateFile, goBack, theme, currentTheme }) {
   const [selectedIds, setSelectedIds] = useState([]); // 다중 선택
   const selectedId = selectedIds[0] || null;
 
-  // 활성 툴: 'select' | 'shape' | 'line' | 'text'
-  const [activeTool, setActiveTool]     = useState('select');
-  const [activeShape, setActiveShape]   = useState('rect');
   // 선 도구 세부 설정
   const [lineConfig, setLineConfig]     = useState({ style: 'solid', arrowStart: false, arrowEnd: true, stroke: '#6b7280', strokeWidth: 2 });
   // 선택 툴바 탭: 'style' | 'text' | 'arrange'
@@ -380,7 +377,7 @@ function Editor({ file, updateFile, goBack, theme, currentTheme }) {
   useEffect(() => { localStorage.setItem('portfolio_user_templates', JSON.stringify(userTemplates)); }, [userTemplates]);
 
   // ── 상위 파일 동기화 ──
-  useEffect(() => { updateFile({ ...file, pages }); }, [pages]);
+  useEffect(() => { updateFile({ ...file, pages }); }, [pages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── 자동 줌 ──
   useEffect(() => {
@@ -407,7 +404,7 @@ function Editor({ file, updateFile, goBack, theme, currentTheme }) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [selectedIds, elements]);
+  }, [selectedIds, elements]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── 요소 업데이트 헬퍼 ──
   const updateElements = (newEls) => {
