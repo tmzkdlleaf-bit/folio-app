@@ -862,8 +862,8 @@ function Editor({ file, updateFile, goBack, theme, currentTheme }) {
                     <div className="grid grid-cols-4 gap-1 p-2 border-t border-white/5">
                       {shapeTypes.map(s => (
                         <button key={s.id}
-                          onClick={()=>{ addShapeElement(s.id); setActiveTool('select'); }}
-                          className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg text-[11px] text-gray-400 hover:bg-emerald-500/10 hover:text-emerald-400 transition ${activeShape===s.id?'bg-emerald-500/10 text-emerald-400':''}`}
+                          onClick={()=>{ addShapeElement(s.id); }}
+                          className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg text-[11px] text-gray-400 hover:bg-emerald-500/10 hover:text-emerald-400 transition"
                           title={s.label}>
                           <span className="text-lg leading-none">{s.icon}</span>
                           <span className="truncate w-full text-center">{s.label}</span>
